@@ -23,6 +23,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      - run: npx playwright install --with-deps chromium
+      - run: pnpm e2e
       - run: pnpm build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
