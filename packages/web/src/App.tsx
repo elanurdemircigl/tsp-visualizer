@@ -1,109 +1,117 @@
-import type { Point, SolverId, SolverStep, WorkerEvent } from '@tsp/core';
+import type { Point, SolverId, SolverParams } from '@tsp/core';
 import { solvers } from '@tsp/solvers';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { randomPoints } from './map/geometry';
 import { SplitMap, type Lane } from './map/SplitMap';
 import { TourMap } from './map/TourMap';
-import { createSolverRunner, type SolverRunner } from './worker/client';
+import { ControlPanel, type Mode } from './ui/ControlPanel';
+import { ConvergenceChart } from './ui/ConvergenceChart';
+import { ResultsTable } from './ui/ResultsTable';
+import { ALGO_STYLES } from './ui/theme';
+import { useSolverRuns } from './ui/useSolverRuns';
 
-// GEÇİCİ deneme paneli: haritayı ve Worker'ı gerçek çözücülerle uçtan uca görmek için.
-// Faz 1'de UI ajanı bunu src/ui altındaki kontrol paneliyle değiştirir.
-
-const COLORS: Record<SolverId, string> = { nn: '#0891b2', '2opt': '#4f46e5', sa: '#c026d3', ga: '#16a34a' };
 const IDS = Object.keys(solvers) as SolverId[];
-
-type Result = { step?: SolverStep; elapsedMs?: number; error?: string };
+const DEFAULT_PARAMS = Object.fromEntries(IDS.map((id) => [id, { ...solvers[id].defaultParams }])) as Record<SolverId, SolverParams>;
 
 export default function App() {
   const [points, setPoints] = useState<Point[]>(() => randomPoints(50));
+  const [randomN, setRandomN] = useState(50);
   const [fitKey, setFitKey] = useState(0);
-  const [solverId, setSolverId] = useState<SolverId>('2opt');
-  const [race, setRace] = useState(false);
-  const [results, setResults] = useState<Partial<Record<SolverId, Result>>>({});
-  const runners = useRef(new Map<SolverId, SolverRunner>());
+  const [mode, setMode] = useState<Mode>('single');
+  const [selected, setSelected] = useState<SolverId>('2opt');
+  const [raceIds, setRaceIds] = useState<SolverId[]>(IDS);
+  const [params, setParams] = useState(DEFAULT_PARAMS);
+  const [speed, setSpeed] = useState(60);
+  const sim = useSolverRuns();
 
-  const stopAll = () => {
-    for (const r of runners.current.values()) r.terminate();
-    runners.current.clear();
-  };
-  useEffect(() => stopAll, []);
+  const active = mode === 'single' ? [selected] : raceIds;
 
-  const run = () => {
-    stopAll();
-    setResults({});
-    for (const id of race ? IDS : [solverId]) {
-      const runner = createSolverRunner((e: WorkerEvent) =>
-        setResults((prev) => ({
-          ...prev,
-          [id]:
-            e.type === 'step' ? { step: e.step }
-            : e.type === 'done' ? { step: { ...e.step, highlight: undefined }, elapsedMs: e.elapsedMs }
-            : { ...prev[id], error: e.message },
-        })),
-      );
-      runners.current.set(id, runner);
-      runner.send({ type: 'start', solverId: id, points, params: {} });
-    }
-  };
-
-  const editPoints = (next: Point[]) => {
-    stopAll();
-    setResults({});
+  /** Nokta kümesi değişince eski sonuçlar geçersiz. */
+  const editPoints = (next: Point[], fit = false) => {
+    sim.reset();
     setPoints(next);
+    if (fit) setFitKey((k) => k + 1);
   };
 
-  const lanes: Lane[] = IDS.map((id) => ({ id, label: solvers[id].name, color: COLORS[id], step: results[id]?.step }));
+  const start = (paused = false) => sim.start(active, points, params, { stepsPerSecond: speed, paused });
+
+  const lanes: Lane[] = raceIds.map((id) => ({
+    id,
+    label: solvers[id].name,
+    color: ALGO_STYLES[id].color,
+    step: sim.runs[id]?.step,
+  }));
 
   return (
     <div className="flex h-full flex-col bg-slate-50 text-slate-900">
-      <header className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-2 text-sm">
-        <h1 className="mr-4 text-base font-semibold">TSP Algoritma Görselleştirici</h1>
-        <button className="rounded border px-2 py-1" onClick={() => { editPoints(randomPoints(50)); setFitKey((k) => k + 1); }}>
-          Rastgele 50
-        </button>
-        <button className="rounded border px-2 py-1" onClick={() => { editPoints(randomPoints(200)); setFitKey((k) => k + 1); }}>
-          Rastgele 200
-        </button>
-        <button className="rounded border px-2 py-1" onClick={() => editPoints([])}>Temizle</button>
-        <span className="mx-2 text-slate-400">|</span>
-        <label className="flex items-center gap-1">
-          <input type="checkbox" checked={race} onChange={(e) => setRace(e.target.checked)} /> Yarış
-        </label>
-        {!race && (
-          <select className="rounded border px-1 py-1" value={solverId} onChange={(e) => setSolverId(e.target.value as SolverId)}>
-            {IDS.map((id) => <option key={id} value={id}>{solvers[id].name}</option>)}
-          </select>
-        )}
-        <button className="rounded bg-indigo-600 px-3 py-1 text-white disabled:opacity-40" disabled={points.length < 2} onClick={run}>
-          Çalıştır
-        </button>
-        <span className="ml-auto tabular-nums text-slate-600">
-          {points.length} nokta
-          {IDS.filter((id) => results[id]).map((id) => {
-            const r = results[id]!;
-            return (
-              <span key={id} className="ml-3" style={{ color: COLORS[id] }}>
-                {id}: {r.error ?? (r.step ? `${(r.step.bestCost / 1000).toFixed(2)} km` : '…')}
-                {r.elapsedMs !== undefined && ` (${Math.round(r.elapsedMs)} ms)`}
-              </span>
-            );
-          })}
-        </span>
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2">
+        <h1 className="text-base font-semibold">TSP Algoritma Görselleştirici</h1>
+        <a className="text-sm text-slate-500 hover:text-slate-900" href="https://github.com/elanurdemircigl/tsp-visualizer">
+          GitHub
+        </a>
       </header>
-      <main className="min-h-0 flex-1">
-        {race ? (
-          <SplitMap points={points} lanes={lanes} fitKey={fitKey} />
-        ) : (
-          <TourMap
-            points={points}
-            step={results[solverId]?.step}
-            color={COLORS[solverId]}
-            fitKey={fitKey}
-            onAddPoint={(lat, lng) => editPoints([...points, { id: crypto.randomUUID(), lat, lng }])}
-            onRemovePoint={(id) => editPoints(points.filter((p) => p.id !== id))}
+
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <aside className="border-b border-slate-200 bg-white lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
+          <ControlPanel
+            pointCount={points.length}
+            randomN={randomN}
+            onRandomNChange={setRandomN}
+            onRandom={() => editPoints(randomPoints(randomN), true)}
+            onClear={() => editPoints([])}
+            mode={mode}
+            onModeChange={(m) => {
+              sim.reset();
+              setMode(m);
+            }}
+            selected={selected}
+            onSelectedChange={(id) => {
+              sim.reset();
+              setSelected(id);
+            }}
+            raceIds={raceIds}
+            onRaceIdsChange={setRaceIds}
+            params={params}
+            onParamsChange={(id, v) => setParams((prev) => ({ ...prev, [id]: v }))}
+            speed={speed}
+            onSpeedChange={(s) => {
+              setSpeed(s);
+              sim.setSpeed(s);
+            }}
+            isRunning={sim.isRunning}
+            isPaused={sim.isPaused}
+            hasRuns={sim.hasRuns}
+            onStart={() => start()}
+            onPause={sim.pause}
+            onResume={sim.resume}
+            onStep={() => (sim.isPaused ? sim.step() : start(true))}
+            onReset={sim.reset}
           />
-        )}
-      </main>
+        </aside>
+
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="h-[55vh] min-h-0 lg:h-auto lg:flex-1">
+            {mode === 'race' ? (
+              <SplitMap points={points} lanes={lanes} fitKey={fitKey} />
+            ) : (
+              <TourMap
+                points={points}
+                step={sim.runs[selected]?.step}
+                color={ALGO_STYLES[selected].color}
+                fitKey={fitKey}
+                onAddPoint={(lat, lng) => editPoints([...points, { id: crypto.randomUUID(), lat, lng }])}
+                onRemovePoint={(id) => editPoints(points.filter((p) => p.id !== id))}
+              />
+            )}
+          </div>
+          <div className="grid border-t border-slate-200 bg-white lg:h-64 lg:grid-cols-2">
+            <div className="h-64 lg:h-auto lg:border-r lg:border-slate-200">
+              <ConvergenceChart runs={sim.runs} />
+            </div>
+            <ResultsTable runs={sim.runs} />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

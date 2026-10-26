@@ -25,14 +25,28 @@ export interface Solver<P extends SolverParams = SolverParams> {
 
 // --- Worker protokolü: UI → Worker ---
 export type WorkerCommand =
-  | { type: 'start'; solverId: SolverId; points: Point[]; params: SolverParams }
+  | {
+      type: 'start';
+      solverId: SolverId;
+      points: Point[];
+      params: SolverParams;
+      /** Saniyede en fazla kaç çözücü adımı; 0 veya yok = sınırsız. */
+      stepsPerSecond?: number;
+      /** true ise duraklatılmış başlar (adım adım ilerletmek için). */
+      paused?: boolean;
+    }
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'step' } // duraklatılmışken tek adım ilerlet
+  | { type: 'speed'; stepsPerSecond: number } // 0 = sınırsız
   | { type: 'stop' };
 
+/** Yakınsama grafiği noktası: tam turda en iyi maliyetin düştüğü an. */
+export type TracePoint = { iteration: number; bestCost: number };
+
 // --- Worker protokolü: Worker → UI (step mesajları en fazla saniyede 60) ---
+// trace: önceki mesajdan bu yana kaydedilen iyileşmeler (atlanan adımlar dahil).
 export type WorkerEvent =
-  | { type: 'step'; step: SolverStep }
-  | { type: 'done'; step: SolverStep; elapsedMs: number }
+  | { type: 'step'; step: SolverStep; trace: TracePoint[] }
+  | { type: 'done'; step: SolverStep; elapsedMs: number; trace: TracePoint[] }
   | { type: 'error'; message: string };

@@ -21,7 +21,9 @@ export type TourMapProps = {
   onReady?: (map: LeafletMap) => void;
 };
 
-const HIGHLIGHT_COLOR = '#f97316';
+// Algoritma renklerinden (ui/theme.ts) ayrışsın diye nötr koyu renk.
+const HIGHLIGHT_COLOR = '#0f172a';
+const KM = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function TourMap({
   points,
@@ -80,7 +82,7 @@ export function TourMap({
         <div className="pointer-events-none absolute top-2 left-12 z-[1000] rounded bg-white/90 px-2 py-1 text-sm shadow">
           <span className="mr-1.5 inline-block size-2.5 rounded-full" style={{ background: color }} />
           <span className="font-medium">{label}</span>
-          {step && <span className="ml-2 tabular-nums text-slate-600">{(step.cost / 1000).toFixed(2)} km</span>}
+          {step && <span className="ml-2 tabular-nums text-slate-600">{KM.format(step.cost / 1000)} km</span>}
         </div>
       )}
     </div>
@@ -102,12 +104,24 @@ function MapHooks({
     onReady?.(map);
   }, [map, onReady]);
 
+  // Kap boyutu değişince (ızgara yerleşimi, panel, pencere) Leaflet'e bildir.
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+
   useEffect(() => {
     if (fitKey === undefined || points.length < 2) return;
-    map.fitBounds(
-      points.map((p) => [p.lat, p.lng] as [number, number]),
-      { padding: [24, 24] },
-    );
+    // Bir kare bekle: yerleşim oturmadan sığdırılırsa harita çok uzaktan açılır.
+    const frame = requestAnimationFrame(() => {
+      map.invalidateSize();
+      map.fitBounds(
+        points.map((p) => [p.lat, p.lng] as [number, number]),
+        { padding: [24, 24], animate: false },
+      );
+    });
+    return () => cancelAnimationFrame(frame);
     // Bilerek sadece fitKey'e bağlı: tek nokta eklemek görünümü oynatmasın.
   }, [fitKey, map]);
 

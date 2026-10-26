@@ -2,7 +2,9 @@
 
 Konya haritası üzerinde Gezgin Satıcı Problemi (TSP) için sezgisel algoritmaları adım adım canlı çalıştıran ve yan yana yarıştıran web uygulaması.
 
-> 🚧 Faz 0 — iskelet. Canlı demo, GIF ve benchmark tablosu MVP ile eklenecek.
+**Canlı demo:** https://elanurdemircigl.github.io/tsp-visualizer/
+
+> 🚧 Faz 1 tamamlandı: 4 algoritma, harita, kontrol paneli, yakınsama grafiği ve yarış modu. GIF ve benchmark tablosu sonraki fazda.
 
 ## Kurulum
 
