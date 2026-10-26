@@ -8,10 +8,14 @@
     "build": "pnpm --filter web build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "bench": "tsx benchmarks/run.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
+    "@tsp/core": "workspace:*",
+    "@tsp/solvers": "workspace:*",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"
   }

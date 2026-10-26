@@ -1,12 +1,14 @@
 import type { Point, SolverId, SolverParams } from '@tsp/core';
 import { solvers } from '@tsp/solvers';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { SCENARIOS } from './data/scenarios';
 import { randomPoints } from './map/geometry';
 import { SplitMap, type Lane } from './map/SplitMap';
 import { TourMap } from './map/TourMap';
 import { ControlPanel, type Mode } from './ui/ControlPanel';
 import { ConvergenceChart } from './ui/ConvergenceChart';
 import { ResultsTable } from './ui/ResultsTable';
+import { decodeShare, encodeShare } from './ui/share';
 import { ALGO_STYLES } from './ui/theme';
 import { useSolverRuns } from './ui/useSolverRuns';
 
@@ -22,7 +24,37 @@ export default function App() {
   const [raceIds, setRaceIds] = useState<SolverId[]>(IDS);
   const [params, setParams] = useState(DEFAULT_PARAMS);
   const [speed, setSpeed] = useState(60);
+  const [shareMessage, setShareMessage] = useState<string>();
   const sim = useSolverRuns();
+
+  // Paylaşım linkiyle açıldıysa durumu linkten yükle.
+  useEffect(() => {
+    let cancelled = false;
+    decodeShare(window.location.hash).then((s) => {
+      if (!s || cancelled) return;
+      setPoints(s.points);
+      setMode(s.mode);
+      setSelected(s.selected);
+      setRaceIds(s.raceIds);
+      setParams(s.params);
+      setSpeed(s.speed);
+      setFitKey((k) => k + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const share = async () => {
+    const hash = await encodeShare({ points, mode, selected, raceIds, params, speed });
+    window.history.replaceState(null, '', hash);
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareMessage('Link kopyalandı.');
+    } catch {
+      setShareMessage('Kopyalanamadı; adres çubuğundaki linki kullan.');
+    }
+  };
 
   const active = mode === 'single' ? [selected] : raceIds;
 
@@ -59,6 +91,13 @@ export default function App() {
             onRandomNChange={setRandomN}
             onRandom={() => editPoints(randomPoints(randomN), true)}
             onClear={() => editPoints([])}
+            scenarios={SCENARIOS}
+            onScenario={(id) => {
+              const s = SCENARIOS.find((x) => x.id === id);
+              if (s) editPoints(s.points, true);
+            }}
+            onShare={share}
+            shareMessage={shareMessage}
             mode={mode}
             onModeChange={(m) => {
               sim.reset();

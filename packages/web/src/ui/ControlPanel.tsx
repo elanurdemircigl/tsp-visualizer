@@ -12,6 +12,10 @@ export type ControlPanelProps = {
   onRandomNChange: (n: number) => void;
   onRandom: () => void;
   onClear: () => void;
+  scenarios: { id: string; name: string }[];
+  onScenario: (id: string) => void;
+  onShare: () => void;
+  shareMessage?: string;
 
   mode: Mode;
   onModeChange: (mode: Mode) => void;
@@ -68,6 +72,19 @@ export function ControlPanel(p: ControlPanelProps) {
           <Button onClick={p.onRandom}>Rastgele üret</Button>
           <Button onClick={p.onClear}>Temizle</Button>
         </div>
+        <select
+          aria-label="Hazır senaryo"
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+          value=""
+          onChange={(e) => e.target.value && p.onScenario(e.target.value)}
+        >
+          <option value="">Hazır Konya senaryosu…</option>
+          {p.scenarios.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </Section>
 
       <Section title="Mod">
@@ -164,6 +181,13 @@ export function ControlPanel(p: ControlPanelProps) {
           <Button onClick={p.onStep} disabled={p.isRunning || !canStart}>Adım</Button>
           <Button onClick={p.onReset} disabled={!p.hasRuns}>Sıfırla</Button>
         </div>
+      </Section>
+
+      <Section title="Paylaş">
+        <Button onClick={p.onShare} disabled={p.pointCount === 0}>Linki kopyala</Button>
+        <p className="min-h-4 text-xs text-slate-500" role="status">
+          {p.shareMessage ?? 'Noktalar ve ayarlar linkin içine yazılır.'}
+        </p>
       </Section>
     </div>
   );

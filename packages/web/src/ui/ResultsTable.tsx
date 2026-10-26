@@ -27,12 +27,12 @@ export function ResultsTable({ runs }: { runs: Runs }) {
         <table className="w-full text-sm" aria-label="Algoritma sonuçları">
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-              <th className="py-1 font-medium">Algoritma</th>
-              <th className="py-1 font-medium">Durum</th>
-              <th className="py-1 text-right font-medium">En iyi tur</th>
-              <th className="py-1 text-right font-medium">Fark</th>
-              <th className="py-1 text-right font-medium">Süre</th>
-              <th className="py-1 text-right font-medium">İterasyon</th>
+              <th className="whitespace-nowrap px-1.5 py-1 font-medium">Algoritma</th>
+              <th className="whitespace-nowrap px-1.5 py-1 font-medium">Durum</th>
+              <th className="whitespace-nowrap px-1.5 py-1 text-right font-medium">En iyi tur</th>
+              <th className="whitespace-nowrap px-1.5 py-1 text-right font-medium">Fark</th>
+              <th className="whitespace-nowrap px-1.5 py-1 text-right font-medium">Süre</th>
+              <th className="whitespace-nowrap px-1.5 py-1 text-right font-medium">İterasyon</th>
             </tr>
           </thead>
           <tbody className="tabular-nums">
@@ -43,21 +43,21 @@ export function ResultsTable({ runs }: { runs: Runs }) {
               const gap = run.status === 'done' && cost !== undefined && best ? ((cost - best) / best) * 100 : undefined;
               return (
                 <tr key={id} data-testid={`result-${id}`} className="border-b border-slate-100">
-                  <td className="py-1">
+                  <td className="whitespace-nowrap px-1.5 py-1">
                     <span className="mr-1.5 inline-block size-2.5 rounded-full" style={{ background: ALGO_STYLES[id].color }} />
                     {solvers[id].name}
                   </td>
-                  <td className="py-1 text-slate-600">{run.error ? `Hata: ${run.error}` : STATUS_LABEL[run.status]}</td>
-                  <td className={`py-1 text-right ${isBest ? 'font-semibold' : ''}`}>
+                  <td className="whitespace-nowrap px-1.5 py-1 text-slate-600">{run.error ? `Hata: ${run.error}` : STATUS_LABEL[run.status]}</td>
+                  <td className={`whitespace-nowrap px-1.5 py-1 text-right ${isBest ? 'font-semibold' : ''}`}>
                     {cost !== undefined ? formatKm(cost) : '—'}
                   </td>
-                  <td className="py-1 text-right text-slate-600">
+                  <td className="whitespace-nowrap px-1.5 py-1 text-right text-slate-600">
                     {isBest ? 'en iyi' : gap !== undefined ? `+%${gap.toLocaleString('tr-TR', { maximumFractionDigits: gap < 1 ? 2 : 1 })}` : '—'}
                   </td>
-                  <td className="py-1 text-right text-slate-600">
+                  <td className="whitespace-nowrap px-1.5 py-1 text-right text-slate-600">
                     {run.elapsedMs !== undefined ? `${formatInt(Math.round(run.elapsedMs))} ms` : '—'}
                   </td>
-                  <td className="py-1 text-right text-slate-600">{run.step ? formatInt(run.step.iteration) : '—'}</td>
+                  <td className="whitespace-nowrap px-1.5 py-1 text-right text-slate-600">{run.step ? formatInt(run.step.iteration) : '—'}</td>
                 </tr>
               );
             })}

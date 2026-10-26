@@ -71,3 +71,30 @@ test('yarış modu 4 algoritmayı ayrı haritalarda bitirir', async ({ page }) =
   await expect(page.locator('.recharts-line')).toHaveCount(4);
   await page.screenshot({ path: 'e2e/screenshots/race.png' });
 });
+
+test('hazır Konya senaryosu yüklenir', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Hazır senaryo').selectOption({ label: 'Konya turu (17)' });
+  await expect(pointCount(page)).toHaveText('17');
+});
+
+test('paylaşım linki noktaları ve ayarları geri yükler', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  await page.getByLabel('Hazır senaryo').selectOption({ label: 'Tarihi merkez (6)' });
+  await page.getByRole('radio', { name: 'Yarış' }).click();
+  await page.getByLabel('Hız').selectOption({ label: '5 adım/sn' });
+  await page.getByRole('button', { name: 'Linki kopyala' }).click();
+  await expect(page.getByRole('status')).toHaveText('Link kopyalandı.');
+
+  const link = page.url();
+  expect(link).toContain('#s=');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+
+  const other = await context.newPage();
+  await other.goto(link);
+  await expect(pointCount(other)).toHaveText('6');
+  await expect(other.getByRole('radio', { name: 'Yarış' })).toHaveAttribute('aria-checked', 'true');
+  await expect(other.getByLabel('Hız')).toHaveValue('5');
+  await expect(other.locator('.leaflet-container')).toHaveCount(4);
+});
